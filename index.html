@@ -4,10 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>YKS 2027 Bulut Analiz Paneli</title>
+    
+    <!-- SAYFA YÜKLENİR YÜKLENMEZ TEMA KONTROLÜ (Beyaz ekran / sıfırlanma önleyici) -->
+    <script>
+        if (localStorage.getItem('theme') === 'dark') {
+            document.documentElement.classList.add('dark-mode-preload');
+        }
+    </script>
+
     <!-- Grafik kütüphanesi -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
-    <!-- Firebase Uyumluluk Kütüphaneleri (Eval Hatası Çıkartmaz) -->
+    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
@@ -23,7 +31,7 @@
             --border-color: #334155; --tab-active-bg: #334155; --tab-active-text: #60a5fa;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
-        body { background-color: var(--bg-color); color: var(--text-color); padding: 20px; transition: all 0.3s ease; }
+        body { background-color: var(--bg-color); color: var(--text-color); padding: 20px; transition: background-color 0.2s ease, color 0.2s ease; }
         .main-container { max-width: 1200px; margin: 0 auto; }
         .header {
             background: var(--container-bg); padding: 20px; border-radius: 12px;
@@ -77,7 +85,7 @@
         body.dark-mode .lesson-box { background: rgba(255,255,255,0.02); }
         .lesson-title { font-weight: 700; font-size: 14px; margin-bottom: 6px; color: var(--primary-blue); }
         body.dark-mode .lesson-title { color: var(--tab-active-text); }
-        .sync-status { font-size: 12px; color: #10b981; font-weight: 600; display: flex; align-items: center; gap: 4px; }
+        .sync-status { font-size: 12px; color: #f59e0b; font-weight: 600; display: flex; align-items: center; gap: 4px; }
     </style>
 </head>
 <body>
@@ -85,8 +93,8 @@
 <div class="main-container">
     <header class="header">
         <div class="logo" style="display: flex; flex-direction: column; gap: 4px;">
-            <h1>AnalizWeb Bulut</h1>
-            <div id="syncStatus" class="sync-status">☁️ Buluta Bağlanılıyor...</div>
+            <h1>AnalizWeb Hibrit</h1>
+            <div id="syncStatus" class="sync-status">⏳ Bulut Bekleniyor...</div>
         </div>
         
         <div class="header-actions">
@@ -118,7 +126,7 @@
             <thead><tr><th>Yayın</th><th>Tarih</th><th>Türkçe</th><th>Sosyal</th><th>Mat</th><th>Fen</th><th>Toplam Net</th><th>İşlem</th></tr></thead>
             <tbody id="tyt-body"></tbody>
         </table>
-        <div id="tyt-empty" class="empty-msg">Henüz kayıt eklenmedi veya buluttan yükleniyor...</div>
+        <div id="tyt-empty" class="empty-msg">Henüz kayıt eklenmedi...</div>
     </div>
 
     <div id="ayt-tab" class="tab-content">
@@ -127,7 +135,7 @@
             <thead><tr><th>Yayın</th><th>Tarih</th><th>Mat</th><th>Fizik</th><th>Kimya</th><th>Biyo</th><th>Toplam Net</th><th>İşlem</th></tr></thead>
             <tbody id="ayt-body"></tbody>
         </table>
-        <div id="ayt-empty" class="empty-msg">Henüz kayıt eklenmedi veya buluttan yükleniyor...</div>
+        <div id="ayt-empty" class="empty-msg">Henüz kayıt eklenmedi...</div>
     </div>
 
     <div id="brans-tab" class="tab-content">
@@ -136,7 +144,7 @@
             <thead><tr><th>Ders</th><th>Yayın</th><th>Tarih</th><th>Net</th><th>İşlem</th></tr></thead>
             <tbody id="brans-body"></tbody>
         </table>
-        <div id="brans-empty" class="empty-msg">Henüz kayıt eklenmedi veya buluttan yükleniyor...</div>
+        <div id="brans-empty" class="empty-msg">Henüz kayıt eklenmedi...</div>
     </div>
 
     <div id="analiz-tab" class="tab-content">
@@ -149,7 +157,7 @@
 <div class="modal-overlay" id="modal">
     <div class="modal">
         <h2>Yeni Deneme Ekle</h2>
-        <form id="addForm" onsubmit="saveDataToCloud(event)">
+        <form id="addForm" onsubmit="saveData(event)">
             <div class="form-group">
                 <label>Sınav Türü</label>
                 <select id="examType" onchange="toggleFields()">
@@ -207,15 +215,43 @@
 
             <div style="display: flex; gap: 10px; margin-top: 15px;">
                 <button type="button" class="btn" onclick="closeModal()" style="flex:1">İptal</button>
-                <button type="submit" class="btn btn-orange" style="flex:1">Buluta Kaydet</button>
+                <button type="submit" class="btn btn-orange" style="flex:1">Kaydet</button>
             </div>
         </form>
     </div>
 </div>
 
-<!-- Firebase Çalıştırma Kodları -->
+<!-- Hibrit Mantık ve Tema Yönetimi Scripti -->
 <script>
-    // Firebase Bağlantı Ayarların
+    // 1. TEMA YÖNETİMİ (Anında ve Kesin Uygulama)
+    if (localStorage.getItem('theme') === 'dark') {
+        document.body.classList.add('dark-mode');
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+        const darkModeBtn = document.getElementById('darkModeToggle');
+        const isDark = localStorage.getItem('theme') === 'dark';
+        
+        if (isDark) {
+            document.body.classList.add('dark-mode');
+            if (darkModeBtn) darkModeBtn.innerText = '☀️ Aydınlık';
+        } else {
+            document.body.classList.remove('dark-mode');
+            if (darkModeBtn) darkModeBtn.innerText = '🌙 Karanlık';
+        }
+
+        if (darkModeBtn) {
+            darkModeBtn.addEventListener('click', () => {
+                document.body.classList.toggle('dark-mode');
+                const currentIsDark = document.body.classList.contains('dark-mode');
+                darkModeBtn.innerText = currentIsDark ? '☀️ Aydınlık' : '🌙 Karanlık';
+                localStorage.setItem('theme', currentIsDark ? 'dark' : 'light');
+                if (typeof drawChart === 'function') drawChart();
+            });
+        }
+    });
+
+    // 2. FIREBASE AYARLARI
     const firebaseConfig = {
         apiKey: "AIzaSyBUAu9Q3uAwfljXldwLUmnepMpZRKGFOuU",
         authDomain: "yksanaliz2027.firebaseapp.com",
@@ -233,7 +269,7 @@
 
     document.getElementById('tarih').valueAsDate = new Date();
 
-    // Sayaç
+    // SAYAÇ
     const targetDate = new Date("June 19, 2027 10:15:00").getTime();
     function updateTimer() {
         const now = new Date().getTime();
@@ -248,7 +284,7 @@
     setInterval(updateTimer, 1000);
     updateTimer();
 
-    // Sekmeler ve Tema
+    // SEKMELER
     window.switchTab = function(evt, tabName) {
         document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -256,13 +292,6 @@
         evt.currentTarget.classList.add('active');
         if(tabName === 'analiz-tab') drawChart();
     }
-
-    const darkModeBtn = document.getElementById('darkModeToggle');
-    darkModeBtn.addEventListener('click', () => {
-        document.body.classList.toggle('dark-mode');
-        darkModeBtn.innerText = document.body.classList.contains('dark-mode') ? '☀️ Aydınlık' : '🌙 Karanlık';
-        drawChart();
-    });
 
     window.openModal = function() { document.getElementById('modal').style.display = 'flex'; }
     window.closeModal = function() { document.getElementById('modal').style.display = 'none'; document.getElementById('addForm').reset(); document.getElementById('tarih').valueAsDate = new Date(); toggleFields(); }
@@ -308,11 +337,12 @@
         }
     }
 
-    // Firestore'a Kaydetme
-    window.saveDataToCloud = function(e) {
+    // KAYDETME
+    window.saveData = function(e) {
         e.preventDefault();
         const type = document.getElementById('examType').value;
         const obj = {
+            id: 'id_' + Date.now(),
             type: type,
             yayin: document.getElementById('yayin').value,
             tarih: document.getElementById('tarih').value,
@@ -333,10 +363,6 @@
             let d3 = parseInt(document.getElementById('d3').value) || 0, y3 = parseInt(document.getElementById('y3').value) || 0;
             let d4 = parseInt(document.getElementById('d4').value) || 0, y4 = parseInt(document.getElementById('y4').value) || 0;
 
-            if((d1+y1 > maxs[0]) || (d2+y2 > maxs[1]) || (d3+y3 > maxs[2]) || (d4+y4 > maxs[3])) {
-                alert("HATA: Soru sınırları aşıldı!"); return;
-            }
-
             obj.n1 = Math.max(0, parseFloat((d1 - (y1 / 4)).toFixed(2)));
             obj.n2 = Math.max(0, parseFloat((d2 - (y2 / 4)).toFixed(2)));
             obj.n3 = Math.max(0, parseFloat((d3 - (y3 / 4)).toFixed(2)));
@@ -344,35 +370,54 @@
             obj.toplam = parseFloat((obj.n1 + obj.n2 + obj.n3 + obj.n4).toFixed(2));
         }
 
-        db.collection("analizweb_veriler").add(obj).then(() => {
-            closeModal();
-        }).catch((error) => {
-            alert("Kayıt sırasında hata oluştu: " + error.message);
+        veriler.push(obj);
+        localStorage.setItem('yks_veriler', JSON.stringify(veriler));
+        renderTables();
+        closeModal();
+
+        db.collection("analizweb_veriler").doc(obj.id).set(obj).catch((err) => {
+            console.log("Bulut kayıt uyarısı:", err);
         });
     }
 
-    // Firestore'dan Silme
-    window.deleteDataFromCloud = function(id) {
+    // SİLME
+    window.deleteData = function(id) {
         if(confirm("Bu denemeyi silmek istediğine emin misin?")) {
-            db.collection("analizweb_veriler").doc(id).delete().catch((error) => {
-                alert("Silme hatası: " + error.message);
-            });
+            veriler = veriler.filter(v => v.id !== id);
+            localStorage.setItem('yks_veriler', JSON.stringify(veriler));
+            renderTables();
+            db.collection("analizweb_veriler").doc(id).delete().catch(err => console.log(err));
         }
     }
 
-    // Gerçek Zamanlı Dinleme (Anlık Senkronizasyon)
-    db.collection("analizweb_veriler").onSnapshot((snapshot) => {
-        veriler = [];
-        snapshot.forEach((docSnap) => {
-            veriler.push({ id: docSnap.id, ...docSnap.data() });
+    // VERİLERİ YÜKLEME VE SENKRONİZASYON
+    function initData() {
+        const localData = localStorage.getItem('yks_veriler');
+        if(localData) {
+            veriler = JSON.parse(localData);
+            renderTables();
+        }
+
+        db.collection("analizweb_veriler").onSnapshot((snapshot) => {
+            if(!snapshot.empty) {
+                let cloudVeriler = [];
+                snapshot.forEach((docSnap) => {
+                    cloudVeriler.push(docSnap.data());
+                });
+                veriler = cloudVeriler;
+                localStorage.setItem('yks_veriler', JSON.stringify(veriler));
+                renderTables();
+                document.getElementById('syncStatus').innerText = "✅ Buluta Bağlı (Senkronize)";
+                document.getElementById('syncStatus').style.color = "#10b981";
+            } else {
+                document.getElementById('syncStatus').innerText = "☁️ Bulut Aktif (Boş)";
+                document.getElementById('syncStatus').style.color = "#3b82f6";
+            }
+        }, (error) => {
+            document.getElementById('syncStatus').innerText = "⚠️ Yerel Mod (Bulut Erişilemedi)";
+            document.getElementById('syncStatus').style.color = "#f59e0b";
         });
-        document.getElementById('syncStatus').innerText = "✅ Buluta Bağlı (Senkronize)";
-        renderTables();
-        if(document.getElementById('analiz-tab').classList.contains('active')) drawChart();
-    }, (error) => {
-        document.getElementById('syncStatus').innerText = "⚠️ Bağlantı Hatası";
-        document.getElementById('syncStatus').style.color = "#ef4444";
-    });
+    }
 
     function renderTables() {
         const tyt = veriler.filter(v => v.type === 'tyt').sort((a,b) => new Date(b.tarih) - new Date(a.tarih));
@@ -383,9 +428,11 @@
         document.getElementById('ayt-empty').style.display = ayt.length ? 'none' : 'block';
         document.getElementById('brans-empty').style.display = brans.length ? 'none' : 'block';
 
-        document.getElementById('tyt-body').innerHTML = tyt.map(v => `<tr><td>${v.yayin}</td><td>${v.tarih}</td><td>${v.n1}</td><td>${v.n2}</td><td>${v.n3}</td><td>${v.n4}</td><td><b>${v.toplam}</b></td><td><button class="btn-danger" onclick="deleteDataFromCloud('${v.id}')">Sil</button></td></tr>`).join('');
-        document.getElementById('ayt-body').innerHTML = ayt.map(v => `<tr><td>${v.yayin}</td><td>${v.tarih}</td><td>${v.n1}</td><td>${v.n2}</td><td>${v.n3}</td><td>${v.n4}</td><td><b>${v.toplam}</b></td><td><button class="btn-danger" onclick="deleteDataFromCloud('${v.id}')">Sil</button></td></tr>`).join('');
-        document.getElementById('brans-body').innerHTML = brans.map(v => `<tr><td>${v.ders}</td><td>${v.yayin}</td><td>${v.tarih}</td><td><b>${v.net}</b></td><td><button class="btn-danger" onclick="deleteDataFromCloud('${v.id}')">Sil</button></td></tr>`).join('');
+        document.getElementById('tyt-body').innerHTML = tyt.map(v => `<tr><td>${v.yayin}</td><td>${v.tarih}</td><td>${v.n1}</td><td>${v.n2}</td><td>${v.n3}</td><td>${v.n4}</td><td><b>${v.toplam}</b></td><td><button class="btn-danger" onclick="deleteData('${v.id}')">Sil</button></td></tr>`).join('');
+        document.getElementById('ayt-body').innerHTML = ayt.map(v => `<tr><td>${v.yayin}</td><td>${v.tarih}</td><td>${v.n1}</td><td>${v.n2}</td><td>${v.n3}</td><td>${v.n4}</td><td><b>${v.toplam}</b></td><td><button class="btn-danger" onclick="deleteData('${v.id}')">Sil</button></td></tr>`).join('');
+        document.getElementById('brans-body').innerHTML = brans.map(v => `<tr><td>${v.ders}</td><td>${v.yayin}</td><td>${v.tarih}</td><td><b>${v.net}</b></td><td><button class="btn-danger" onclick="deleteData('${v.id}')">Sil</button></td></tr>`).join('');
+        
+        if(document.getElementById('analiz-tab').classList.contains('active')) drawChart();
     }
 
     function drawChart() {
@@ -421,6 +468,7 @@
     }
 
     toggleFields();
+    initData();
 </script>
 </body>
 </html>

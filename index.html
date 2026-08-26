@@ -6,6 +6,11 @@
     <title>YKS 2027 Bulut Analiz Paneli</title>
     <!-- Grafik kütüphanesi -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Firebase Uyumluluk Kütüphaneleri (Eval Hatası Çıkartmaz) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
     <style>
         :root {
             --bg-color: #f4f6f8; --container-bg: #ffffff; --text-color: #1e293b;
@@ -55,8 +60,7 @@
         .tab-btn { background: transparent; border: none; color: var(--text-color); font-size: 15px; font-weight: 600; padding: 10px 16px; border-radius: 8px; cursor: pointer; transition: 0.2s; }
         .tab-btn.active { background: var(--tab-active-bg); color: var(--tab-active-text); }
         .tab-content { display: none; background: var(--container-bg); padding: 24px; border-radius: 12px; border: 1px solid var(--border-color); min-height: 400px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
-        .tab-content.active { display: block; animation: fadeIn 0.3s; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .tab-content.active { display: block; }
         table { width: 100%; border-collapse: collapse; margin-top: 15px; }
         th, td { padding: 12px; text-align: left; border-bottom: 1px solid var(--border-color); }
         th { background: rgba(0,0,0,0.03); font-size: 14px; }
@@ -209,12 +213,9 @@
     </div>
 </div>
 
-<!-- Firebase SDK Entegrasyonu -->
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-    // Senin Firebase Ayarların
+<!-- Firebase Çalıştırma Kodları -->
+<script>
+    // Firebase Bağlantı Ayarların
     const firebaseConfig = {
         apiKey: "AIzaSyBUAu9Q3uAwfljXldwLUmnepMpZRKGFOuU",
         authDomain: "yksanaliz2027.firebaseapp.com",
@@ -224,8 +225,8 @@
         appId: "1:337676460231:web:d37f173c353c491c17dee2"
     };
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
 
     let veriler = [];
     let myChart = null;
@@ -308,7 +309,7 @@
     }
 
     // Firestore'a Kaydetme
-    window.saveDataToCloud = async function(e) {
+    window.saveDataToCloud = function(e) {
         e.preventDefault();
         const type = document.getElementById('examType').value;
         const obj = {
@@ -343,27 +344,24 @@
             obj.toplam = parseFloat((obj.n1 + obj.n2 + obj.n3 + obj.n4).toFixed(2));
         }
 
-        try {
-            await addDoc(collection(db, "analizweb_veriler"), obj);
+        db.collection("analizweb_veriler").add(obj).then(() => {
             closeModal();
-        } catch (error) {
+        }).catch((error) => {
             alert("Kayıt sırasında hata oluştu: " + error.message);
-        }
+        });
     }
 
     // Firestore'dan Silme
-    window.deleteDataFromCloud = async function(id) {
+    window.deleteDataFromCloud = function(id) {
         if(confirm("Bu denemeyi silmek istediğine emin misin?")) {
-            try {
-                await deleteDoc(doc(db, "analizweb_veriler", id));
-            } catch (error) {
+            db.collection("analizweb_veriler").doc(id).delete().catch((error) => {
                 alert("Silme hatası: " + error.message);
-            }
+            });
         }
     }
 
     // Gerçek Zamanlı Dinleme (Anlık Senkronizasyon)
-    onSnapshot(collection(db, "analizweb_veriler"), (snapshot) => {
+    db.collection("analizweb_veriler").onSnapshot((snapshot) => {
         veriler = [];
         snapshot.forEach((docSnap) => {
             veriler.push({ id: docSnap.id, ...docSnap.data() });

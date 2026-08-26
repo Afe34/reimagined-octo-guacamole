@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>YKS Koçluk & Analiz Paneli v7.0</title>
+    
+    <!-- PWA Meta Tags for Mobile / APK-like Experience -->
+    <meta name="theme-color" content="#3b82f6">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="YKS Panel">
+
+    <!-- Google Fonts: Plus Jakarta Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-dark: #0f172a;
+            --text-gray: #64748b;
+            --border-color: #e2e8f0;
+            --input-bg: #f1f5f9;
+            --primary-blue: #3b82f6;
+            --primary-yellow: #f59e0b;
+            --c1: #10b981; --c2: #f59e0b; --c3: #6366f1; --c4: #ef4444;
+            --c-brans: #8b5cf6;
+            --shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -2px rgba(0,0,0,0.05);
+        }
+
+        body.dark-mode {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-dark: #f8fafc;
+            --text-gray: #94a3b8;
+            --border-color: #334155;
+            --input-bg: #0f172a;
+            --primary-blue: #60a5fa;
+            --shadow: 0 4px 6px -1px rgba(0,0,0,0.3);
+        }
+
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background-color: var(--bg-color); 
+            color: var(--text-dark); 
+            margin: 0; 
+            padding: 0;
+            transition: background-color 0.3s, color 0.3s;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .container { max-width: 1200px; margin: 0 auto; padding: 16px; }
+        
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;}
+        .header-left { display: flex; align-items: center; gap: 15px; }
+        h1 { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -0.5px; }
+        
+        /* Modern Halkalı Geri Sayım Sayacı */
+        .countdown-box { background: var(--card-bg); border: 1px solid var(--border-color); padding: 6px 12px; border-radius: 12px; box-shadow: var(--shadow); display: flex; align-items: center; gap: 10px; }
+        .ring-container { position: relative; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; }
+        .ring-container svg { transform: rotate(-90deg); width: 32px; height: 32px; }
+        .ring-container circle { fill: none; stroke-width: 3.5; stroke-linecap: round; transition: stroke-dashoffset 0.5s ease; }
+        .ring-bg { stroke: var(--border-color); }
+        .ring-progress { stroke: var(--primary-blue); stroke-dasharray: 100; stroke-dashoffset: 25; }
+        .ring-text { position: absolute; font-size: 8px; font-weight: 800; color: var(--primary-blue); }
+        
+        .countdown-info { display: flex; flex-direction: column; }
+        .countdown-box span.title { color: var(--text-gray); font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700;}
+        .countdown-box span.time { color: var(--text-dark); font-size: 13px; font-weight: 800;}
+
+        .header-actions { display: flex; gap: 8px; align-items: center; }
+
+        .btn-outline { background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-dark); padding: 8px 12px; border-radius: 10px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 6px; box-shadow: var(--shadow); transition: all 0.2s; font-size: 13px;}
+        .btn-outline:hover { border-color: var(--primary-blue); }
+
+        .btn-yellow { background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; padding: 8px 16px; border: none; border-radius: 10px; cursor: pointer; font-weight: 700; box-shadow: var(--shadow); transition: transform 0.2s, opacity 0.2s; font-size: 13px; }
+        .btn-yellow:hover { opacity: 0.9; transform: translateY(-1px); }
+
+        /* Sekmeler */
+        .tabs { display: flex; gap: 6px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch;}
+        .tabs::-webkit-scrollbar { display: none; }
+        .tab-btn { background: var(--card-bg); border: 1px solid var(--border-color); padding: 8px 14px; border-radius: 10px; cursor: pointer; font-weight: 600; color: var(--text-gray); transition: all 0.2s; white-space: nowrap; font-size: 13px; box-shadow: var(--shadow);}
+        .tab-btn:hover { color: var(--text-dark); }
+        .tab-btn.active { background: var(--primary-blue); color: #fff; border-color: var(--primary-blue); box-shadow: var(--shadow); }
+
+        .section { display: none; }
+        .section.active { display: block; }
+
+        /* Kartlar */
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+        .card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 16px; padding: 16px; box-shadow: var(--shadow); transition: transform 0.2s; display: flex; flex-direction: column; justify-content: space-between;}
+        .card-header { display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 10px; }
+        .card-title { font-weight: 700; font-size: 14px; color: var(--text-dark); }
+        .card-subtitle { font-size: 11px; color: var(--c-brans); font-weight: 700; margin-top: 3px; }
+        .card-date { font-size: 11px; color: var(--text-gray); margin-top: 3px;}
+        
+        .total-net-box { background: var(--input-bg); color: var(--primary-blue); border: 1px solid var(--border-color); padding: 6px 10px; border-radius: 8px; text-align: center; min-width: 50px; height: fit-content; }
+        .total-net-box span { display: block; font-size: 16px; font-weight: 800; }
+        .total-net-box small { font-size: 9px; color: var(--text-gray); font-weight: 600; }
+
+        .subject-stats { display: flex; justify-content: space-between; font-size: 11px; gap: 6px; flex-wrap: wrap; margin-bottom: 10px;}
+        .subject-stats div { text-align: center; background: var(--input-bg); padding: 6px; border-radius: 8px; flex: 1; min-width: 45%; border: 1px solid var(--border-color); color: var(--text-dark);}
+        
+        .exam-note { background: rgba(245, 158, 11, 0.1); border-left: 3px solid var(--primary-yellow); padding: 8px 10px; border-radius: 6px; font-size: 11px; color: var(--text-dark); font-weight: 500; margin-bottom: 8px; }
+        .exam-note span { display: block; color: var(--primary-yellow); font-weight: 700; font-size: 9px; margin-bottom: 2px; text-transform: uppercase;}
+
+        .delete-btn { display: block; width: 100%; text-align: right; color: #ef4444; background: none; border: none; cursor: pointer; font-size: 11px; font-weight: 600; padding-top: 4px;}
+
+        /* Grafikler & Hedef Paneli */
+        .chart-main-control { background: var(--card-bg); border: 1px solid var(--border-color); padding: 14px; border-radius: 14px; margin-bottom: 16px; box-shadow: var(--shadow); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;}
+        .chart-main-control select { padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--input-bg); color: var(--text-dark); font-weight: 600; outline: none; font-family: inherit; font-size: 12px;}
+        
+        .target-inputs { display: flex; gap: 8px; align-items: center; background: var(--input-bg); padding: 6px 12px; border-radius: 10px; border: 1px solid var(--border-color);}
+        .target-inputs label { font-size: 12px; font-weight: 700; color: var(--text-gray); }
+        .target-inputs input { width: 60px; padding: 4px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-dark); text-align: center; font-weight: bold; font-family: inherit; font-size: 12px;}
+
+        .chart-container { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 16px; padding: 16px; box-shadow: var(--shadow); margin-bottom: 16px; }
+        .chart-header { margin-bottom: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;}
+        
+        .mini-charts-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+        .mini-chart-box { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 16px; padding: 14px; box-shadow: var(--shadow); }
+        .mini-chart-title { text-align: center; font-weight: 700; color: var(--c-brans); margin-bottom: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 6px; font-size: 13px;}
+
+        /* Modal */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); justify-content: center; align-items: center; z-index: 1000; padding: 10px; box-sizing: border-box;}
+        .modal-content { background: var(--card-bg); color: var(--text-dark); width: 100%; max-width: 520px; border-radius: 16px; overflow: hidden; border: 1px solid var(--border-color); box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3); max-height: 90vh; display: flex; flex-direction: column;}
+        .modal-header { background: var(--input-bg); padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; font-weight: 700; border-bottom: 1px solid var(--border-color); font-size: 14px;}
+        .close-btn { cursor: pointer; font-size: 20px; border: none; background: none; color: var(--text-gray); font-weight: bold;}
+        .modal-body { padding: 16px; overflow-y: auto; flex: 1;}
+        .form-group { margin-bottom: 12px; }
+        .form-group label { display: block; margin-bottom: 4px; font-weight: 600; font-size: 12px; color: var(--text-dark);}
+        .form-control { width: 100%; padding: 8px 10px; border: 1px solid var(--border-color); background: var(--input-bg); color: var(--text-dark); border-radius: 8px; box-sizing: border-box; font-family: inherit; font-size: 13px;}
+        textarea.form-control { resize: vertical; min-height: 50px; }
+        
+        .subject-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; background: var(--input-bg); padding: 10px; border-radius: 10px; margin-bottom: 10px; border: 1px solid var(--border-color); }
+        .subject-title { grid-column: span 4; font-weight: 700; font-size: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 4px; margin-bottom: 2px;}
+        .subject-grid input { width: 100%; padding: 6px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-dark); border-radius: 6px; box-sizing: border-box; text-align: center; font-family: inherit; font-size: 13px;}
+        .modal-footer { padding: 12px 16px; background: var(--input-bg); border-top: 1px solid var(--border-color); text-align: right; }
+        .btn-save { background: var(--primary-blue); color: white; border: none; padding: 8px 20px; border-radius: 8px; cursor: pointer; font-weight: 700; font-family: inherit; font-size: 13px;}
+
+        /* PWA Install Banner */
+        #pwaInstallBanner {
+            display: none;
+            position: fixed;
+            bottom: 16px;
+            left: 16px;
+            right: 16px;
+            background: var(--card-bg);
+            border: 1px solid var(--primary-blue);
+            padding: 12px 16px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            z-index: 2000;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        #pwaInstallBanner p { margin: 0; font-size: 12px; font-weight: 600; }
+        #pwaInstallBanner button { background: var(--primary-blue); color: white; border: none; padding: 6px 12px; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 12px;}
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <div class="header-left">
+            <h1>DAS Paneli</h1>
+            <!-- Modern Halkalı Sayaç -->
+            <div class="countdown-box" title="2027 YKS Tahmini Tarihi (19 Haziran)">
+                <div class="ring-container">
+                    <svg viewBox="0 0 36 36">
+                        <path class="ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" />
+                        <path id="ringProgressPath" class="ring-progress" stroke-dasharray="100, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" />
+                    </svg>
+                    <div class="ring-text" id="ringPercent">-%</div>
+                </div>
+                <div class="countdown-info">
+                    <span class="title">YKS 2027 Sayaç</span>
+                    <span class="time" id="countdownTimer">Hesaplanıyor...</span>
+                </div>
+            </div>
+        </div>
+        <div class="header-actions">
+            <button class="btn-outline" onclick="toggleDarkMode()">
+                <span id="themeIcon">🌙</span>
+            </button>
+            <button class="btn-yellow" onclick="openModal()">+ Yeni Ekle</button>
+        </div>
+    </header>
+
+    <!-- Sekmeler -->
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('tab-tyt', this)">TYT Denemeleri</button>
+        <button class="tab-btn" onclick="switchTab('tab-ayt', this)">AYT Denemeleri</button>
+        <button class="tab-btn" onclick="switchTab('tab-brans', this)">Branş Denemeleri</button>
+        <button class="tab-btn" onclick="switchTab('tab-analiz', this)">Analiz (Grafikler)</button>
+    </div>
+
+    <!-- Sınav Listeleri -->
+    <div id="tab-tyt" class="section active">
+        <div class="grid" id="grid-TYT"></div>
+    </div>
+    <div id="tab-ayt" class="section">
+        <div class="grid" id="grid-AYT"></div>
+    </div>
+    <div id="tab-brans" class="section">
+        <div class="grid" id="grid-BRANS"></div>
+    </div>
+
+    <!-- Analiz Bölümü -->
+    <div id="tab-analiz" class="section">
+        <div class="chart-main-control">
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap: wrap;">
+                <h3 style="margin:0; font-size:13px;">Görünüm:</h3>
+                <select id="mainChartSelector" onchange="toggleAnalysisViews()">
+                    <option value="GENEL_TYT">Genel Denemeler (TYT)</option>
+                    <option value="GENEL_AYT">Genel Denemeler (AYT)</option>
+                    <option value="BRANS_MINI">Branş Denemeleri (Mini)</option>
+                </select>
+            </div>
+            <div class="target-inputs" id="targetPanel" style="display:flex;">
+                <label>🎯 Hedef:</label>
+                <input type="number" id="inputTargetTYT" min="0" max="120" placeholder="TYT" onchange="saveTargets()" title="TYT Hedefi">
+                <input type="number" id="inputTargetAYT" min="0" max="80" placeholder="AYT" onchange="saveTargets()" title="AYT Hedefi">
+            </div>
+        </div>
+
+        <div id="genelGrafiklerAlani">
+            <div class="chart-container">
+                <div class="chart-header"><h3 style="margin:0; font-size:13px;" id="lineChartTitle">Zaman İçindeki Gelişim & Hedef</h3></div>
+                <canvas id="lineChart" height="120"></canvas>
+            </div>
+            <div class="chart-container">
+                <div class="chart-header"><h3 style="margin:0; font-size:13px;" id="barChartTitle">Deneme Branş Dağılımları</h3></div>
+                <canvas id="barChart" height="140"></canvas>
+            </div>
+        </div>
+
+        <div id="bransGrafiklerAlani" class="mini-charts-grid" style="display:none;"></div>
+    </div>
+</div>
+
+<!-- Yeni Sınav Modalı -->
+<div class="modal" id="examModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <span>Yeni Sınav Kaydı</span>
+            <button class="close-btn" onclick="closeModal()">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Sınav Türü</label>
+                <select id="sinavTuru" class="form-control" onchange="toggleForm()">
+                    <option value="TYT">TYT Denemesi</option>
+                    <option value="AYT">AYT Denemesi</option>
+                    <option value="BRANS">Branş Denemesi</option>
+                </select>
+            </div>
+            
+            <div style="display: flex; gap: 8px;">
+                <div class="form-group" style="flex: 2;">
+                    <label>Yayın Adı</label>
+                    <input type="text" id="yayinAdi" class="form-control" placeholder="Örn: 3D Türkiye Geneli">
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label>Tarih</label>
+                    <input type="date" id="sinavTarihi" class="form-control">
+                </div>
+            </div>
+
+            <!-- TYT Dersleri -->
+            <div id="form-TYT">
+                <div class="subject-grid"><div class="subject-title" style="color: var(--c1);">Türkçe (Max 40)</div>
+                    <div><small>D</small><input type="number" id="tyt_1_d" min="0" max="40" oninput="calc('tyt_1', 40)"></div>
+                    <div><small>Y</small><input type="number" id="tyt_1_y" min="0" max="40" oninput="calc('tyt_1', 40)"></div>
+                    <div><small>B</small><input type="number" id="tyt_1_b" readonly></div>
+                    <div><small>N</small><input type="number" id="tyt_1_n" readonly style="font-weight:bold;"></div>
+                </div>
+                <div class="subject-grid"><div class="subject-title" style="color: var(--c2);">Matematik (Max 40)</div>
+                    <div><small>D</small><input type="number" id="tyt_2_d" min="0" max="40" oninput="calc('tyt_2', 40)"></div>
+                    <div><small>Y</small><input type="number" id="tyt_2_y" min="0" max="40" oninput="calc('tyt_2', 40)"></div>
+                    <div><small>B</small><input type="number" id="tyt_2_b" readonly></div>
+                    <div><small>N</small><input type="number" id="tyt_2_n" readonly style="font-weight:bold;"></div>
+                </div>
+                <div class="subject-grid"><div class="subject-title" style="color: var(--c3);">Sosyal (Max 20)</div>
+                    <div><small>D</small><input type="number" id="tyt_3_d" min="0" max="20" oninput="calc('tyt_3', 20)"></div>
+                    <div><small>Y</small><input type="number" id="tyt_3_y" min="0" max="20" oninput="calc('tyt_3', 20)"></div>
+                    <div><small>B</small><input type="number" id="tyt_3_b" readonly></div>
+                    <div><small>N</small><input type="number" id="tyt_3_n" readonly style="font-weight:bold;"></div>
+                </div>
+                <div class="subject-grid"><div class="subject-title" style="color: var(--c4);">Fen (Max 20)</div>
+                    <div><small>D</small><input type="number" id="tyt_4_d" min="0" max="20" oninput="calc('tyt_4', 20)"></div>
+                    <div><small>Y</small><input type="number" id="tyt_4_y" min="0" max="20" oninput="calc('tyt_4', 20)"></div>
+                    <div><small>B</small><input type="number" id="tyt_4_b" readonly></div>
+                    <div><small>N</small><input type="number" id="tyt_4_n" readonly style="font-weight:bold;"></div>
+                </div>
+            </div>
+
+            <!-- AYT Dersleri -->
+            <div id="form-AYT" style="display: none;">
+                <div class="subject-grid"><div class="subject-title" style="color: var(--c1);">Ed-Sos 1 (Max 40)</div>
+                    <div><small>D</small><input type="number" id="ayt_1_d" min="0" max="40" oninput="calc('ayt_1', 40)"></div>
+                    <div><small>Y</small><input type="number" id="ayt_1_y" min="0" max="40" oninput="calc('ayt_1', 40)"></div>
+                    <div><small>B</small><input type="number" id="ayt_1_b" readonly></div>
+                    <div><small>N</small><input type="number" id="ayt_1_n" readonly style="font-weight:bold;"></div>
+                </div>
+                <div class="subject-grid"><div class="subject-title" style="color: var(--c3);">Sosyal 2 (Max 40)</div>
+                    <div><small>D</small><input type="number" id="ayt_2_d" min="0" max="40" oninput="calc('ayt_2', 40)"></div>
+                    <div><small>Y</small><input type="number" id="ayt_2_y" min="0" max="40" oninput="calc('ayt_2', 40)"></div>
+                    <div><small>B</small><input type="number" id="ayt_2_b" readonly></div>
+                    <div><small>N</small><input type="number" id="ayt_2_n" readonly style="font-weight:bold;"></div>
+                </div>
+                <div class="subject-grid"><div class="subject-title" style="color: var(--c2);">Matematik (Max 40)</div>
+                    <div><small>D</small><input type="number" id="ayt_3_d" min="0" max="40" oninput="calc('ayt_3', 40)"></div>
+                    <div><small>Y</small><input type="number" id="ayt_3_y" min="0" max="40" oninput="calc('ayt_3', 40)"></div>
+                    <div><small>B</small><input type="number" id="ayt_3_b" readonly></div>
+                    <div><small>N</small><input type="number" id="ayt_3_n" readonly style="font-weight:bold;"></div>
+                </div>
+                <div class="subject-grid"><div class="subject-title" style="color: var(--c4);">Fen Bilimleri (Max 40)</div>
+                    <div><small>D</small><input type="number" id="ayt_4_d" min="0" max="40" oninput="calc('ayt_4', 40)"></div>
+                    <div><small>Y</small><input type="number" id="ayt_4_y" min="0" max="40" oninput="calc('ayt_4', 40)"></div>
+                    <div><small>B</small><input type="number" id="ayt_4_b" readonly></div>
+                    <div><small>N</small><input type="number" id="ayt_4_n" readonly style="font-weight:bold;"></div>
+                </div>
+            </div>
+
+            <!-- Branş Denemesi -->
+            <div id="form-BRANS" style="display: none;">
+                <div class="form-group">
+                    <label style="color: var(--c-brans);">Branş Kategori</label>
+                    <select id="bransKategori" class="form-control" onchange="updateBransLimit()">
+                        <option value="TYT Türkçe">TYT Türkçe (Max 40)</option>
+                        <option value="TYT Matematik">TYT Matematik (Max 40)</option>
+                        <option value="TYT Sosyal">TYT Sosyal (Max 20)</option>
+                        <option value="TYT Fen">TYT Fen (Max 20)</option>
+                        <option value="AYT Matematik">AYT Matematik (Max 40)</option>
+                        <option value="AYT Fen">AYT Fen (Max 40)</option>
+                        <option value="AYT Edebiyat-Sosyal">AYT Edebiyat-Sosyal (Max 40)</option>
+                        <option value="AYT Sosyal Bilimler 2">AYT Sosyal Bilimler 2 (Max 40)</option>
+                    </select>
+                </div>
+                <div class="subject-grid">
+                    <div class="subject-title" style="color: var(--c-brans);">Sonuçlar</div>
+                    <div><small>D</small><input type="number" id="brn_1_d" min="0" oninput="calcBrans()"></div>
+                    <div><small>Y</small><input type="number" id="brn_1_y" min="0" oninput="calcBrans()"></div>
+                    <div><small>B</small><input type="number" id="brn_1_b" oninput="calcBrans()"></div>
+                    <div><small>N</small><input type="number" id="brn_1_n" readonly style="font-weight:bold;"></div>
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-top: 10px;">
+                <label>📝 Analiz & Not</label>
+                <textarea id="sinavNotu" class="form-control" placeholder="Eksik konular, süre yönetimi notları..."></textarea>
+            </div>
+
+        </div>
+        <div class="modal-footer">
+            <button class="btn-save" onclick="saveExam()">Kaydet</button>
+        </div>
+    </div>
+</div>
+
+<!-- PWA Install Banner -->
+<div id="pwaInstallBanner">
+    <p>📱 Uygulamayı telefona kurup APK gibi kullanın!</p>
+    <button id="installBtn">Yükle</button>
+</div>
+
+<script>
+    let exams = JSON.parse(localStorage.getItem('das_exams_v7')) || [];
+    let userTargets = JSON.parse(localStorage.getItem('das_targets')) || { tyt: 80, ayt: 50 };
+    
+    let barChartInstance = null;
+    let lineChartInstance = null;
+    let miniChartInstances = [];
+
+    window.onload = () => { 
+        initTheme();
+        initCountdown();
+        loadTargets();
+        renderAllGrids(); 
+        toggleAnalysisViews(); 
+    };
+
+    /* PWA Install Prompt Handler */
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        document.getElementById('pwaInstallBanner').style.display = 'flex';
+    });
+
+    document.getElementById('installBtn').addEventListener('click', async () => {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') {
+                document.getElementById('pwaInstallBanner').style.display = 'none';
+            }
+            deferredPrompt = null;
+        }
+    });
+
+    function initCountdown() {
+        const countDownDate = new Date("Jun 19, 2027 10:15:00").getTime();
+        const startDate = new Date("Jun 19, 2025 10:15:00").getTime();
+
+        const updateTimer = setInterval(() => {
+            const now = new Date().getTime();
+            const distance = countDownDate - now;
+
+            if (distance < 0) {
+                clearInterval(updateTimer);
+                document.getElementById("countdownTimer").innerHTML = "SINAV BAŞLADI!";
+                document.getElementById("ringPercent").innerHTML = "0%";
+                document.getElementById("ringProgressPath").style.strokeDashoffset = 100;
+                return;
+            }
+
+            const totalSpan = countDownDate - startDate;
+            let percentLeft = Math.max(0, Math.min(100, ((countDownDate - now) / totalSpan) * 100));
+            
+            document.getElementById("ringProgressPath").style.strokeDashoffset = 100 - percentLeft;
+            document.getElementById("ringPercent").innerHTML = Math.round(percentLeft) + "%";
+
+            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+
+            document.getElementById("countdownTimer").innerHTML = `${days}g ${hours}s ${minutes}d`;
+        }, 1000);
+    }
+
+    function loadTargets() {
+        document.getElementById('inputTargetTYT').value = userTargets.tyt;
+        document.getElementById('inputTargetAYT').value = userTargets.ayt;
+    }
+    
+    function saveTargets() {
+        let tytVal = parseFloat(document.getElementById('inputTargetTYT').value) || 0;
+        let aytVal = parseFloat(document.getElementById('inputTargetAYT').value) || 0;
+        
+        if(tytVal > 120) tytVal = 120;
+        if(aytVal > 80) aytVal = 80;
+
+        userTargets.tyt = tytVal;
+        userTargets.ayt = aytVal;
+        document.getElementById('inputTargetTYT').value = tytVal;
+        document.getElementById('inputTargetAYT').value = aytVal;
+
+        localStorage.setItem('das_targets', JSON.stringify(userTargets));
+        toggleAnalysisViews();
+    }
+
+    function initTheme() {
+        const isDark = localStorage.getItem('das_theme') === 'dark';
+        if(isDark) document.body.classList.add('dark-mode');
+        updateThemeUI(isDark);
+    }
+    function toggleDarkMode() {
+        const isDark = document.body.classList.toggle('dark-mode');
+        localStorage.setItem('das_theme', isDark ? 'dark' : 'light');
+        updateThemeUI(isDark);
+        toggleAnalysisViews();
+    }
+    function updateThemeUI(isDark) {
+        document.getElementById('themeIcon').innerText = isDark ? '☀️' : '🌙';
+    }
+    function getChartTextColor() { return document.body.classList.contains('dark-mode') ? '#94a3b8' : '#64748b'; }
+    function getChartGridColor() { return document.body.classList.contains('dark-mode') ? '#334155' : '#e2e8f0'; }
+
+    function switchTab(tabId, element) {
+        document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+        element.classList.add('active');
+        if(tabId === 'tab-analiz') toggleAnalysisViews();
+    }
+
+    function openModal() {
+        document.getElementById('examModal').style.display = 'flex';
+        document.querySelectorAll('.modal-body input[type="number"], .modal-body input[type="text"], .modal-body textarea').forEach(el => el.value = '');
+        document.getElementById('sinavTarihi').valueAsDate = new Date();
+        document.getElementById('sinavTuru').value = 'TYT';
+        toggleForm();
+    }
+    function closeModal() { document.getElementById('examModal').style.display = 'none'; }
+    
+    function toggleForm() {
+        const type = document.getElementById('sinavTuru').value;
+        document.getElementById('form-TYT').style.display = type === 'TYT' ? 'block' : 'none';
+        document.getElementById('form-AYT').style.display = type === 'AYT' ? 'block' : 'none';
+        document.getElementById('form-BRANS').style.display = type === 'BRANS' ? 'block' : 'none';
+        if(type === 'BRANS') updateBransLimit();
+    }
+
+    function getBransMaxQ() {
+        const cat = document.getElementById('bransKategori').value;
+        if(cat.includes('Sosyal') && !cat.includes('Sosyal Bilimler 2')) return 20;
+        if(cat.includes('Fen') && !cat.includes('AYT Fen')) return 20;
+        return 40;
+    }
+
+    function updateBransLimit() {
+        const maxQ = getBransMaxQ();
+        document.getElementById('brn_1_d').max = maxQ;
+        document.getElementById('brn_1_y').max = maxQ;
+        calcBrans();
+    }
+
+    function calc(prefix, maxQ) {
+        let dInput = document.getElementById(prefix + '_d');
+        let yInput = document.getElementById(prefix + '_y');
+        
+        let d = parseFloat(dInput.value) || 0;
+        let y = parseFloat(yInput.value) || 0;
+
+        if(d < 0) { d = 0; dInput.value = 0; }
+        if(d > maxQ) { d = maxQ; dInput.value = maxQ; }
+
+        if (d + y > maxQ) {
+            y = maxQ - d;
+            yInput.value = y;
+        }
+        if(y < 0) { y = 0; yInput.value = 0; }
+
+        let b = maxQ - (d + y);
+        let n = d - (y / 4);
+
+        document.getElementById(prefix + '_b').value = b;
+        document.getElementById(prefix + '_n').value = n.toFixed(2);
+    }
+
+    function calcBrans() {
+        let maxQ = getBransMaxQ();
+        let dInput = document.getElementById('brn_1_d');
+        let yInput = document.getElementById('brn_1_y');
+
+        let d = parseFloat(dInput.value) || 0;
+        let y = parseFloat(yInput.value) || 0;
+
+        if(d < 0) { d = 0; dInput.value = 0; }
+        if(d > maxQ) { d = maxQ; dInput.value = maxQ; }
+
+        if (d + y > maxQ) {
+            y = maxQ - d;
+            yInput.value = y;
+        }
+        if(y < 0) { y = 0; yInput.value = 0; }
+
+        let b = maxQ - (d + y);
+        let n = d - (y / 4);
+
+        document.getElementById('brn_1_b').value = b;
+        document.getElementById('brn_1_n').value = n.toFixed(2);
+    }
+
+    function saveExam() {
+        const type = document.getElementById('sinavTuru').value;
+        const yayin = document.getElementById('yayinAdi').value || 'İsimsiz Sınav';
+        const tarih = document.getElementById('sinavTarihi').value || new Date().toISOString().split('T')[0];
+        const notlar = document.getElementById('sinavNotu').value;
+        
+        let newExam = { id: Date.now(), type: type, yayin: yayin, tarih: tarih, notlar: notlar };
+
+        if (type === 'TYT') {
+            newExam.subs = [
+                { name: 'Türkçe', n: parseFloat(document.getElementById('tyt_1_n').value) || 0 },
+                { name: 'Matematik', n: parseFloat(document.getElementById('tyt_2_n').value) || 0 },
+                { name: 'Sosyal', n: parseFloat(document.getElementById('tyt_3_n').value) || 0 },
+                { name: 'Fen', n: parseFloat(document.getElementById('tyt_4_n').value) || 0 }
+            ];
+            newExam.totalNet = newExam.subs.reduce((sum, s) => sum + s.n, 0);
+        } else if (type === 'AYT') {
+            newExam.subs = [
+                { name: 'Ed-Sos1', n: parseFloat(document.getElementById('ayt_1_n').value) || 0 },
+                { name: 'Sos2', n: parseFloat(document.getElementById('ayt_2_n').value) || 0 },
+                { name: 'Matematik', n: parseFloat(document.getElementById('ayt_3_n').value) || 0 },
+                { name: 'Fen', n: parseFloat(document.getElementById('ayt_4_n').value) || 0 }
+            ];
+            newExam.totalNet = newExam.subs.reduce((sum, s) => sum + s.n, 0);
+        } else if (type === 'BRANS') {
+            newExam.bransKategori = document.getElementById('bransKategori').value;
+            newExam.subs = [
+                { name: 'Doğru', n: parseFloat(document.getElementById('brn_1_d').value) || 0 },
+                { name: 'Yanlış', n: parseFloat(document.getElementById('brn_1_y').value) || 0 },
+                { name: 'Boş', n: parseFloat(document.getElementById('brn_1_b').value) || 0 }
+            ];
+            newExam.totalNet = parseFloat(document.getElementById('brn_1_n').value) || 0;
+        }
+
+        exams.push(newExam);
+        exams.sort((a, b) => new Date(a.tarih) - new Date(b.tarih));
+        
+        localStorage.setItem('das_exams_v7', JSON.stringify(exams));
+        closeModal();
+        renderAllGrids();
+        toggleAnalysisViews();
+    }
+
+    function deleteExam(id) {
+        if(confirm("Bu sınavı silmek istediğine emin misin?")) {
+            exams = exams.filter(e => e.id !== id);
+            localStorage.setItem('das_exams_v7', JSON.stringify(exams));
+            renderAllGrids();
+            toggleAnalysisViews();
+        }
+    }
+
+    function renderAllGrids() {
+        renderGrid('TYT', 'grid-TYT');
+        renderGrid('AYT', 'grid-AYT');
+        renderGrid('BRANS', 'grid-BRANS');
+    }
+
+    function renderGrid(type, containerId) {
+        const grid = document.getElementById(containerId);
+        grid.innerHTML = '';
+        const filteredExams = exams.filter(e => e.type === type).reverse();
+
+        if (filteredExams.length === 0) {
+            grid.innerHTML = '<div style="grid-column: 1 / -1; text-align:center; padding: 20px; color: var(--text-gray); font-size:13px;">Henüz kayıtlı sınav bulunmuyor.</div>';
+            return;
+        }
+
+        filteredExams.forEach(exam => {
+            let subsHtml = exam.subs.map(s => `<div><strong>${s.name}</strong><br>${s.n}</div>`).join('');
+            let subtitle = exam.type === 'BRANS' ? `<div class="card-subtitle">${exam.bransKategori}</div>` : '';
+            let noteHtml = (exam.notlar && exam.notlar.trim() !== '') ? 
+                `<div class="exam-note"><span>🎯 Analiz</span>${exam.notlar}</div>` : '';
+
+            grid.innerHTML += `
+                <div class="card">
+                    <div>
+                        <div class="card-header">
+                            <div>
+                                <div class="card-title">${exam.yayin}</div>
+                                ${subtitle}
+                                <div class="card-date">${new Date(exam.tarih).toLocaleDateString('tr-TR')}</div>
+                            </div>
+                            <div class="total-net-box">
+                                <small>Net</small>
+                                <span>${exam.totalNet.toFixed(2)}</span>
+                            </div>
+                        </div>
+                        <div class="subject-stats">${subsHtml}</div>
+                        ${noteHtml}
+                    </div>
+                    <button class="delete-btn" onclick="deleteExam(${exam.id})">Kayıt Sil</button>
+                </div>
+            `;
+        });
+    }
+
+    function toggleAnalysisViews() {
+        const selector = document.getElementById('mainChartSelector').value;
+        const genelAlani = document.getElementById('genelGrafiklerAlani');
+        const bransAlani = document.getElementById('bransGrafiklerAlani');
+        const targetPanel = document.getElementById('targetPanel');
+
+        if (selector === 'BRANS_MINI') {
+            genelAlani.style.display = 'none';
+            targetPanel.style.display = 'none';
+            bransAlani.style.display = 'grid';
+            renderMiniCharts();
+        } else {
+            genelAlani.style.display = 'block';
+            targetPanel.style.display = 'flex';
+            bransAlani.style.display = 'none';
+            const type = selector === 'GENEL_TYT' ? 'TYT' : 'AYT';
+            updateGeneralCharts(type);
+        }
+    }
+
+    function updateGeneralCharts(filterType) {
+        const filteredData = exams.filter(e => e.type === filterType);
+        const labels = filteredData.map(e => {
+            let d = new Date(e.tarih);
+            return `${d.getDate()}/${d.getMonth()+1}`;
+        });
+        const dataPoints = filteredData.map(e => e.totalNet);
+        const textColor = getChartTextColor();
+        const gridColor = getChartGridColor();
+
+        const activeTarget = filterType === 'TYT' ? userTargets.tyt : userTargets.ayt;
+        const targetArray = Array(labels.length).fill(activeTarget);
+
+        const ctxLine = document.getElementById('lineChart').getContext('2d');
+        if(lineChartInstance) lineChartInstance.destroy();
+        
+        lineChartInstance = new Chart(ctxLine, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: `🎯 ${filterType} Hedefi (${activeTarget})`,
+                        data: targetArray,
+                        borderColor: '#ef4444',
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        pointRadius: 0,
+                        fill: false,
+                        tension: 0
+                    },
+                    {
+                        label: `${filterType} Netiniz`,
+                        data: dataPoints,
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.15)',
+                        borderWidth: 3,
+                        pointBackgroundColor: '#f59e0b',
+                        pointRadius: 4,
+                        fill: true,
+                        tension: 0.3
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: { 
+                    x: { ticks: { color: textColor, font: {size: 10} }, grid: { color: gridColor } },
+                    y: { beginAtZero: true, max: filterType === 'TYT' ? 120 : 160, ticks: { color: textColor, font: {size: 10} }, grid: { color: gridColor } }
+                },
+                plugins: { legend: { labels: { color: textColor, font: {size: 11} } } }
+            }
+        });
+
+        const barLabels = filteredData.map(e => e.yayin.substring(0,8) + '...');
+        let datasets = [];
+        const colors = ['#10b981', '#f59e0b', '#6366f1', '#ef4444'];
+        for(let i=0; i<4; i++) {
+            datasets.push({
+                label: filteredData.length > 0 ? filteredData[0].subs[i].name : `Ders ${i+1}`,
+                data: filteredData.map(e => e.subs[i].n),
+                backgroundColor: colors[i]
+            });
+        }
+
+        const ctxBar = document.getElementById('barChart').getContext('2d');
+        if(barChartInstance) barChartInstance.destroy();
+
+        barChartInstance = new Chart(ctxBar, {
+            type: 'bar',
+            data: { labels: barLabels, datasets: datasets },
+            options: {
+                responsive: true,
+                scales: {
+                    x: { stacked: true, ticks: { color: textColor, font: {size: 10} }, grid: { color: gridColor } },
+                    y: { stacked: true, beginAtZero: true, max: filterType === 'TYT' ? 120 : 160, ticks: { color: textColor, font: {size: 10} }, grid: { color: gridColor } }
+                },
+                plugins: { legend: { labels: { color: textColor, font: {size: 11} } }, tooltip: { mode: 'index', intersect: false } }
+            }
+        });
+    }
+
+    function renderMiniCharts() {
+        const bransAlani = document.getElementById('bransGrafiklerAlani');
+        bransAlani.innerHTML = '';
+        miniChartInstances.forEach(chart => chart.destroy());
+        miniChartInstances = [];
+
+        const bransExams = exams.filter(e => e.type === 'BRANS');
+        const categories = [...new Set(bransExams.map(e => e.bransKategori))];
+        const textColor = getChartTextColor();
+        const gridColor = getChartGridColor();
+
+        if(categories.length === 0) {
+            bransAlani.innerHTML = '<div style="grid-column: 1 / -1; text-align:center; padding: 30px; color: var(--text-gray); font-size:13px;">Henüz branş denemesi eklenmemiş.</div>';
+            return;
+        }
+
+        categories.forEach((cat, index) => {
+            const catExams = bransExams.filter(e => e.bransKategori === cat);
+            const box = document.createElement('div');
+            box.className = 'mini-chart-box';
+            box.innerHTML = `<div class="mini-chart-title">${cat}</div><canvas id="miniChart_${index}" height="160"></canvas>`;
+            bransAlani.appendChild(box);
+
+            const labels = catExams.map(e => { let d = new Date(e.tarih); return `${d.getDate()}/${d.getMonth()+1}`; });
+            const dataPoints = catExams.map(e => e.totalNet);
+
+            const ctx = document.getElementById(`miniChart_${index}`).getContext('2d');
+            const chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: `${cat} Neti`, data: dataPoints, borderColor: '#8b5cf6', backgroundColor: 'rgba(139, 92, 246, 0.15)',
+                        borderWidth: 2, pointBackgroundColor: '#f59e0b', fill: true, tension: 0.2
+                    }]
+                },
+                options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: textColor, font: {size: 10} }, grid: { color: gridColor } }, y: { beginAtZero: true, ticks: { color: textColor, font: {size: 10} }, grid: { color: gridColor } } } }
+            });
+            miniChartInstances.push(chart);
+        });
+    }
+</script>
+</body>
+</html>

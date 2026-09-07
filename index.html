@@ -466,9 +466,9 @@
             type: type,
             yayin: document.getElementById('yayin').value,
             tarih: document.getElementById('tarih').value,
-            timestamp: editId ? undefined : Date.now()
+            timestamp: editId ? undefined : Date.now(),
+            gizliKey: "Afe2027"
         };
-
         if(type === 'brans') {
             obj.ders = document.getElementById('dersAdi').value;
             obj.d = parseFloat(document.getElementById('bransD').value) || 0;

@@ -452,77 +452,128 @@
             if(d + y > maxs[i-1]) {
                 if(d > maxs[i-1]) { document.getElementById('d'+i).value = maxs[i-1]; d = maxs[i-1]; }
                 if(d + y > maxs[i-1]) { document.getElementById('y'+i).value = maxs[i-1] - d; }
-            }
-        }
-    }
+function drawChart() {
+        const tytVeri = veriler.filter(v => v.type === 'tyt').sort((a,b) => new Date(a.tarih) - new Date(b.tarih) || (a.timestamp||0) - (b.timestamp||0));
+        const aytVeri = veriler.filter(v => v.type === 'ayt').sort((a,b) => new Date(a.tarih) - new Date(b.tarih) || (a.timestamp||0) - (b.timestamp||0));
 
-    window.saveData = function(e) {
-        e.preventDefault();
-        const type = document.getElementById('examType').value;
-        const editId = document.getElementById('editId').value;
+        if (tytVeri.length) {
+            const tytNets = tytVeri.map(v => v.toplam);
+            document.getElementById('stat-avg-tyt').innerText = (tytNets.reduce((a,b) => a + b, 0) / tytNets.length).toFixed(2);
+            document.getElementById('stat-max-tyt').innerText = Math.max(...tytNets);
+        } else {
+            document.getElementById('stat-avg-tyt').innerText = '-';
+            document.getElementById('stat-max-tyt').innerText = '-';
+        }
         
-        const obj = {
-            id: editId ? editId : ('id_' + Date.now()),
-            type: type,
-            yayin: document.getElementById('yayin').value,
-            tarih: document.getElementById('tarih').value,
-            timestamp: editId ? undefined : Date.now(),
-            gizliKey: localStorage.getItem('user_admin_key') || ''
-        };
-        if(type === 'brans') {
-            obj.ders = document.getElementById('dersAdi').value;
-            obj.d = parseFloat(document.getElementById('bransD').value) || 0;
-            obj.y = parseFloat(document.getElementById('bransY').value) || 0;
-            obj.topSoru = parseInt(document.getElementById('bransToplamSoru').value) || 30;
-            if(obj.d + obj.y > obj.topSoru) { alert("Hata: Doğru ve yanlış toplamı toplam soru sayısını geçemez!"); return; }
-            obj.net = Math.max(0, parseFloat((obj.d - (obj.y / 4)).toFixed(2)));
+        if (aytVeri.length) {
+            const aytNets = aytVeri.map(v => v.toplam);
+            document.getElementById('stat-avg-ayt').innerText = (aytNets.reduce((a,b) => a + b, 0) / aytNets.length).toFixed(2);
+            document.getElementById('stat-max-ayt').innerText = Math.max(...aytNets);
         } else {
-            obj.d1 = parseInt(document.getElementById('d1').value) || 0; obj.y1 = parseInt(document.getElementById('y1').value) || 0;
-            obj.d2 = parseInt(document.getElementById('d2').value) || 0; obj.y2 = parseInt(document.getElementById('y2').value) || 0;
-            obj.d3 = parseInt(document.getElementById('d3').value) || 0; obj.y3 = parseInt(document.getElementById('y3').value) || 0;
-            obj.d4 = parseInt(document.getElementById('d4').value) || 0; obj.y4 = parseInt(document.getElementById('y4').value) || 0;
-
-            obj.n1 = Math.max(0, parseFloat((obj.d1 - (obj.y1 / 4)).toFixed(2)));
-            obj.n2 = Math.max(0, parseFloat((obj.d2 - (obj.y2 / 4)).toFixed(2)));
-            obj.n3 = Math.max(0, parseFloat((obj.d3 - (obj.y3 / 4)).toFixed(2)));
-            obj.n4 = Math.max(0, parseFloat((obj.d4 - (obj.y4 / 4)).toFixed(2)));
-            obj.toplam = parseFloat((obj.n1 + obj.n2 + obj.n3 + obj.n4).toFixed(2));
+            document.getElementById('stat-avg-ayt').innerText = '-';
+            document.getElementById('stat-max-ayt').innerText = '-';
         }
 
-        if (editId) {
-            const index = veriler.findIndex(v => v.id === editId);
-            if (index !== -1) {
-                obj.timestamp = veriler[index].timestamp;
-                veriler[index] = obj;
+        const isDark = document.body.classList.contains('dark-mode');
+        const gridColor = isDark ? '#334155' : '#e2e8f0';
+        const textColor = isDark ? '#94a3b8' : '#64748b';
+
+        // 1. GENEL GELİŞİM GRAFİĞİ
+        if (chartGeneralObj) chartGeneralObj.destroy();
+        
+        chartGeneralObj = new Chart(document.getElementById('chartGeneral').getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: tytVeri.map(v => `${v.yayin} (${v.tarih})`),
+                datasets: [
+                    { 
+                        label: 'TYT Toplam', 
+                        data: tytVeri.map(v => v.toplam), 
+                        borderColor: '#f59f00', 
+                        backgroundColor: '#f59f00', 
+                        tension: 0.3 
+                    },
+                    { 
+                        label: 'AYT Toplam', 
+                        data: aytVeri.map(v => v.toplam), 
+                        borderColor: '#0d6efd', 
+                        backgroundColor: '#0d6efd', 
+                        tension: 0.3 
+                    }
+                ]
+            },
+            options: { 
+                responsive: true, 
+                animation: false, 
+                scales: { 
+                    x: { grid: { color: gridColor }, ticks: { color: textColor } }, 
+                    y: { grid: { color: gridColor }, ticks: { color: textColor } } 
+                },
+                plugins: { legend: { labels: { color: textColor } } }
             }
-        } else {
-            veriler.push(obj);
-        }
+        });
 
-        localStorage.setItem('yks_veriler', JSON.stringify(veriler));
-        renderTables();
-        closeModal();
+        // 2. TYT DERS BAZLI GRAFİK
+        if (chartTYTObj) chartTYTObj.destroy();
+        chartTYTObj = new Chart(document.getElementById('chartTYT').getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: tytVeri.map(v => `${v.yayin} (${v.tarih})`),
+                datasets: [
+                    { label: 'Türkçe', data: tytVeri.map(v => v.n1), borderColor: '#ef4444', tension: 0.2 },
+                    { label: 'Sosyal', data: tytVeri.map(v => v.n2), borderColor: '#8b5cf6', tension: 0.2 },
+                    { label: 'Matematik', data: tytVeri.map(v => v.n3), borderColor: '#3b82f6', tension: 0.2 },
+                    { label: 'Fen', data: tytVeri.map(v => v.n4), borderColor: '#10b981', tension: 0.2 }
+                ]
+            },
+            options: { 
+                responsive: true, 
+                animation: false, 
+                scales: { 
+                    x: { grid: { color: gridColor }, ticks: { color: textColor } }, 
+                    y: { grid: { color: gridColor }, ticks: { color: textColor } } 
+                }, 
+                plugins: { legend: { labels: { color: textColor } } } 
+            }
+        });
 
-        db.collection("analizweb_veriler").doc(obj.id).set(obj).catch(err => console.log(err));
+        // 3. AYT DERS BAZLI GRAFİK
+        if (chartAYTObj) chartAYTObj.destroy();
+        chartAYTObj = new Chart(document.getElementById('chartAYT').getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: aytVeri.map(v => `${v.yayin} (${v.tarih})`),
+                datasets: [
+                    { label: 'Matematik', data: aytVeri.map(v => v.n1), borderColor: '#3b82f6', tension: 0.2 },
+                    { label: 'Fizik', data: aytVeri.map(v => v.n2), borderColor: '#f59e0b', tension: 0.2 },
+                    { label: 'Kimya', data: aytVeri.map(v => v.n3), borderColor: '#06b6d4', tension: 0.2 },
+                    { label: 'Biyoloji', data: aytVeri.map(v => v.n4), borderColor: '#10b981', tension: 0.2 }
+                ]
+            },
+            options: { 
+                responsive: true, 
+                animation: false, 
+                scales: { 
+                    x: { grid: { color: gridColor }, ticks: { color: textColor } }, 
+                    y: { grid: { color: gridColor }, ticks: { color: textColor } } 
+                }, 
+                plugins: { legend: { labels: { color: textColor } } } 
+            }
+        });
     }
 
-    window.editData = function(id) {
-        const item = veriler.find(v => v.id === id);
-        if(!item) return;
-
-        document.getElementById('editId').value = item.id;
-        document.getElementById('examType').value = item.type;
-        toggleFields();
-
-        document.getElementById('yayin').value = item.yayin || '';
-        document.getElementById('tarih').value = item.tarih || '';
-
-        if(item.type === 'brans') {
-            document.getElementById('dersAdi').value = item.ders || '';
-            document.getElementById('bransD').value = item.d || 0;
-            document.getElementById('bransY').value = item.y || 0;
-            document.getElementById('bransToplamSoru').value = item.topSoru || 30;
-        } else {
+    // 🔑 YÖNETİCİ ŞİFRE FONKSİYONU
+    function getAdminKey() {
+        let savedKey = localStorage.getItem('user_admin_key');
+        if (!savedKey) {
+            savedKey = prompt("Veri eklemek/düzenlemek için yönetici şifrenizi girin:");
+            if (savedKey) {
+                localStorage.setItem('user_admin_key', savedKey);
+            }
+        }
+        return savedKey;
+    }
+        {
             document.getElementById('d1').value = item.d1 || 0; document.getElementById('y1').value = item.y1 || 0;
             document.getElementById('d2').value = item.d2 || 0; document.getElementById('y2').value = item.y2 || 0;
             document.getElementById('d3').value = item.d3 || 0; document.getElementById('y3').value = item.y3 || 0;
@@ -532,7 +583,15 @@
         openModal();
     }
 
-    window.deleteData = function(id) {
+   window.deleteData = function(id) {
+        let key = localStorage.getItem('user_admin_key');
+        if (!key) {
+            key = prompt("Veri silmek için yönetici şifrenizi girin:");
+            if (key) localStorage.setItem('user_admin_key', key);
+        }
+
+        if (!key) return; // Şifre girilmediyse silme yapma
+
         if(confirm("Bu denemeyi silmek istediğine emin misin?")) {
             veriler = veriler.filter(v => v.id !== id);
             localStorage.setItem('yks_veriler', JSON.stringify(veriler));
@@ -647,68 +706,132 @@
 
         if(document.getElementById('analiz-tab').classList.contains('active')) drawChart();
     }
+function drawChart() {
+    const tytVeri = veriler.filter(v => v.type === 'tyt').sort((a,b) => new Date(a.tarih) - new Date(b.tarih) || (a.timestamp||0) - (b.timestamp||0));
+    const aytVeri = veriler.filter(v => v.type === 'ayt').sort((a,b) => new Date(a.tarih) - new Date(b.tarih) || (a.timestamp||0) - (b.timestamp||0));
 
-    function drawChart() {
-        const tytVeri = veriler.filter(v => v.type === 'tyt').sort((a,b) => new Date(a.tarih) - new Date(b.tarih) || (a.timestamp||0) - (b.timestamp||0));
-        const aytVeri = veriler.filter(v => v.type === 'ayt').sort((a,b) => new Date(a.tarih) - new Date(b.tarih) || (a.timestamp||0) - (b.timestamp||0));
+    if (tytVeri.length) {
+        const tytNets = tytVeri.map(v => v.toplam);
+        document.getElementById('stat-avg-tyt').innerText = (tytNets.reduce((a,b) => a + b, 0) / tytNets.length).toFixed(2);
+        document.getElementById('stat-max-tyt').innerText = Math.max(...tytNets);
+    } else {
+        document.getElementById('stat-avg-tyt').innerText = '-';
+        document.getElementById('stat-max-tyt').innerText = '-';
+    }
+    
+    if (aytVeri.length) {
+        const aytNets = aytVeri.map(v => v.toplam);
+        document.getElementById('stat-avg-ayt').innerText = (aytNets.reduce((a,b) => a + b, 0) / aytNets.length).toFixed(2);
+        document.getElementById('stat-max-ayt').innerText = Math.max(...aytNets);
+    } else {
+        document.getElementById('stat-avg-ayt').innerText = '-';
+        document.getElementById('stat-max-ayt').innerText = '-';
+    }
 
-        if (tytVeri.length) {
-            const tytNets = tytVeri.map(v => v.toplam);
-            document.getElementById('stat-avg-tyt').innerText = (tytNets.reduce((a,b) => a + b, 0) / tytNets.length).toFixed(2);
-            document.getElementById('stat-max-tyt').innerText = Math.max(...tytNets);
-        } else {
-            document.getElementById('stat-avg-tyt').innerText = '-';
-            document.getElementById('stat-max-tyt').innerText = '-';
-        }
-        
-        if (aytVeri.length) {
-            const aytNets = aytVeri.map(v => v.toplam);
-            document.getElementById('stat-avg-ayt').innerText = (aytNets.reduce((a,b) => a + b, 0) / aytNets.length).toFixed(2);
-            document.getElementById('stat-max-ayt').innerText = Math.max(...aytNets);
-        } else {
-            document.getElementById('stat-avg-ayt').innerText = '-';
-            document.getElementById('stat-max-ayt').innerText = '-';
-        }
+    const isDark = document.body.classList.contains('dark-mode');
+    const gridColor = isDark ? '#334155' : '#e2e8f0';
+    const textColor = isDark ? '#94a3b8' : '#64748b';
 
-        const isDark = document.body.classList.contains('dark-mode');
-        const gridColor = isDark ? '#334155' : '#e2e8f0';
-        const textColor = isDark ? '#94a3b8' : '#64748b';
-
-        // GENEL GELİŞİM GRAFİĞİ FIX
-        if (chartGeneralObj) chartGeneralObj.destroy();
-        
-        chartGeneralObj = new Chart(document.getElementById('chartGeneral').getContext('2d'), {
-            type: 'line',
-            data: {
-                labels: tytVeri.map(v => `${v.yayin} (${v.tarih})`),
-                datasets: [
-                    { 
-                        label: 'TYT Toplam', 
-                        data: tytVeri.map(v => v.toplam), 
-                        borderColor: '#f59f00', 
-                        backgroundColor: '#f59f00', 
-                        tension: 0.3 
-                    },
-                    { 
-                        label: 'AYT Toplam', 
-                        data: aytVeri.map(v => v.toplam), 
-                        borderColor: '#0d6efd', 
-                        backgroundColor: '#0d6efd', 
-                        tension: 0.3 
-                    }
-                ]
+    // 1. GENEL GELİŞİM GRAFİĞİ
+    if (chartGeneralObj) chartGeneralObj.destroy();
+    
+    chartGeneralObj = new Chart(document.getElementById('chartGeneral').getContext('2d'), {
+        type: 'line',
+        data: {
+            labels: tytVeri.map(v => `${v.yayin} (${v.tarih})`),
+            datasets: [
+                { 
+                    label: 'TYT Toplam', 
+                    data: tytVeri.map(v => v.toplam), 
+                    borderColor: '#f59f00', 
+                    backgroundColor: '#f59f00', 
+                    tension: 0.3 
+                },
+                { 
+                    label: 'AYT Toplam', 
+                    data: aytVeri.map(v => v.toplam), 
+                    borderColor: '#0d6efd', 
+                    backgroundColor: '#0d6efd', 
+                    tension: 0.3 
+                }
+            ]
+        },
+        options: { 
+            responsive: true, 
+            animation: false, 
+            scales: { 
+                x: { grid: { color: gridColor }, ticks: { color: textColor } }, 
+                y: { grid: { color: gridColor }, ticks: { color: textColor } } 
             },
-            options: { 
-                responsive: true, 
-                animation: false, 
-                scales: { 
-                    x: { grid: { color: gridColor }, ticks: { color: textColor } }, 
-                    y: { grid: { color: gridColor }, ticks: { color: textColor } } 
-                }, 
-                plugins: { legend: { labels: { color: textColor } } } 
-            }
-        });
+            plugins: { legend: { labels: { color: textColor } } }
+        }
+    });
 
+    // 2. TYT DERS BAZLI GRAFİK
+    if (chartTYTObj) chartTYTObj.destroy();
+    chartTYTObj = new Chart(document.getElementById('chartTYT').getContext('2d'), {
+        type: 'line',
+        data: {
+            labels: tytVeri.map(v => `${v.yayin} (${v.tarih})`),
+            datasets: [
+                { label: 'Türkçe', data: tytVeri.map(v => v.n1), borderColor: '#ef4444', tension: 0.2 },
+                { label: 'Sosyal', data: tytVeri.map(v => v.n2), borderColor: '#8b5cf6', tension: 0.2 },
+                { label: 'Matematik', data: tytVeri.map(v => v.n3), borderColor: '#3b82f6', tension: 0.2 },
+                { label: 'Fen', data: tytVeri.map(v => v.n4), borderColor: '#10b981', tension: 0.2 }
+            ]
+        },
+        options: { 
+            responsive: true, 
+            animation: false, 
+            scales: { 
+                x: { grid: { color: gridColor }, ticks: { color: textColor } }, 
+                y: { grid: { color: gridColor }, ticks: { color: textColor } } 
+            }, 
+            plugins: { legend: { labels: { color: textColor } } } 
+        }
+    });
+
+    // 3. AYT DERS BAZLI GRAFİK
+    if (chartAYTObj) chartAYTObj.destroy();
+    chartAYTObj = new Chart(document.getElementById('chartAYT').getContext('2d'), {
+        type: 'line',
+        data: {
+            labels: aytVeri.map(v => `${v.yayin} (${v.tarih})`),
+            datasets: [
+                { label: 'Matematik', data: aytVeri.map(v => v.n1), borderColor: '#3b82f6', tension: 0.2 },
+                { label: 'Fizik', data: aytVeri.map(v => v.n2), borderColor: '#f59e0b', tension: 0.2 },
+                { label: 'Kimya', data: aytVeri.map(v => v.n3), borderColor: '#06b6d4', tension: 0.2 },
+                { label: 'Biyoloji', data: aytVeri.map(v => v.n4), borderColor: '#10b981', tension: 0.2 }
+            ]
+        },
+        options: { 
+            responsive: true, 
+            animation: false, 
+            scales: { 
+                x: { grid: { color: gridColor }, ticks: { color: textColor } }, 
+                y: { grid: { color: gridColor }, ticks: { color: textColor } } 
+            }, 
+            plugins: { legend: { labels: { color: textColor } } } 
+        }
+    });
+}
+
+// 🔑 YÖNETİCİ ŞİFRE FONKSİYONU
+function getAdminKey() {
+    let savedKey = localStorage.getItem('user_admin_key');
+    if (!savedKey) {
+        savedKey = prompt("Veri eklemek/düzenlemek için yönetici şifrenizi girin:");
+        if (savedKey) {
+            localStorage.setItem('user_admin_key', savedKey);
+        }
+    }
+    return savedKey;
+}
+    }
+
+    // TYT DERS BAZLI GRAFİK
+    if (chartTYTObj) chartTYTObj.destroy();
+    chartTYTObj = new Chart(document.getElementById('chartTYT').getContext('2d'), {
         // TYT DERS BAZLI GRAFİK
         if (chartTYTObj) chartTYTObj.destroy();
         chartTYTObj = new Chart(document.getElementById('chartTYT').getContext('2d'), {

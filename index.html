@@ -467,7 +467,7 @@
             yayin: document.getElementById('yayin').value,
             tarih: document.getElementById('tarih').value,
             timestamp: editId ? undefined : Date.now(),
-            gizliKey: "Afe2027"
+            gizliKey: localStorage.getItem('user_admin_key') || ''
         };
         if(type === 'brans') {
             obj.ders = document.getElementById('dersAdi').value;

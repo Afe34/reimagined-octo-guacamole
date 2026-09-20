@@ -15,9 +15,10 @@
     <!-- Grafik kütüphanesi -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
-    <!-- Firebase SDK -->
+    <!-- Firebase SDK (App, Firestore ve Auth) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 
     <style>
         :root {
@@ -32,7 +33,22 @@
         }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
         body { background-color: var(--bg-color); color: var(--text-color); padding: 20px; transition: background-color 0.2s ease, color 0.2s ease; }
-        .main-container { max-width: 1200px; margin: 0 auto; }
+        .main-container { max-width: 1200px; margin: 0 auto; display: none; } /* Giriş yapana kadar gizli */
+        
+        /* GİRİŞ EKRANI STİLLERİ */
+        #auth-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-color); display: flex; justify-content: center; align-items: center; z-index: 9999;
+        }
+        .auth-card {
+            background: var(--container-bg); padding: 30px; border-radius: 12px;
+            width: 100%; max-width: 400px; border: 1px solid var(--border-color);
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); text-align: center;
+        }
+        .auth-card h2 { margin-bottom: 20px; font-weight: 800; color: var(--primary-blue); }
+        body.dark-mode .auth-card h2 { color: var(--tab-active-text); }
+        .auth-error { color: var(--danger-color); font-size: 13px; margin-top: 10px; display: none; }
+
         .header {
             background: var(--container-bg); padding: 20px; border-radius: 12px;
             box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); display: flex;
@@ -90,7 +106,26 @@
 </head>
 <body>
 
-<div class="main-container">
+<!-- GİRİŞ EKRANI (AUTH OVERLAY) -->
+<div id="auth-overlay">
+    <div class="auth-card">
+        <h2>YKS Analiz Girişi</h2>
+        <form id="loginForm" onsubmit="handleLogin(event)">
+            <div class="form-group" style="text-align: left;">
+                <label>E-posta Adresi</label>
+                <input type="email" id="loginEmail" required placeholder="ornek@mail.com">
+            </div>
+            <div class="form-group" style="text-align: left;">
+                <label>Şifre</label>
+                <input type="password" id="loginPassword" required placeholder="********">
+            </div>
+            <div id="authError" class="auth-error"></div>
+            <button type="submit" class="btn btn-orange" style="width: 100%; justify-content: center; margin-top: 10px;">Giriş Yap</button>
+        </form>
+    </div>
+</div>
+
+<div class="main-container" id="mainContainer">
     <header class="header">
         <div class="logo" style="display: flex; flex-direction: column; gap: 4px;">
             <h1>AnalizWeb Hibrit</h1>
@@ -110,6 +145,7 @@
             <button class="btn" onclick="window.print()">🖨️ Yazdır</button>
             <button class="btn" id="darkModeToggle">🌙 Karanlık</button>
             <button class="btn btn-orange" onclick="openModal()">+ Yeni Ekle</button>
+            <button class="btn btn-danger" onclick="handleLogout()" style="padding: 10px 12px;">🚪 Çıkış</button>
         </div>
     </header>
 
@@ -221,7 +257,7 @@
     </div>
 </div>
 
-<!-- Hibrit Mantık ve Tema Yönetimi Scripti -->
+<!-- Hibrit Mantık, Tema ve Auth Yönetimi Scripti -->
 <script>
     // 1. TEMA YÖNETİMİ (Anında ve Kesin Uygulama)
     if (localStorage.getItem('theme') === 'dark') {
@@ -263,9 +299,12 @@
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
+    const auth = firebase.auth();
 
     let veriler = [];
     let myChart = null;
+    let currentUser = null;
+    let unsubscribeSnapshot = null;
 
     document.getElementById('tarih').valueAsDate = new Date();
 
@@ -283,6 +322,45 @@
     }
     setInterval(updateTimer, 1000);
     updateTimer();
+
+    // AUTH (GİRİŞ / ÇIKIŞ) YÖNETİMİ
+    auth.onAuthStateChanged((user) => {
+        const authOverlay = document.getElementById('auth-overlay');
+        const mainContainer = document.getElementById('mainContainer');
+
+        if (user) {
+            currentUser = user;
+            authOverlay.style.display = 'none';
+            mainContainer.style.display = 'block';
+            initData(); // Verileri sadece giriş yapan kullanıcının ID'sine göre çek
+        } else {
+            currentUser = null;
+            if (unsubscribeSnapshot) unsubscribeSnapshot(); // Önceki dinleyiciyi durdur
+            mainContainer.style.display = 'none';
+            authOverlay.style.display = 'flex';
+            veriler = [];
+        }
+    });
+
+    window.handleLogin = function(e) {
+        e.preventDefault();
+        const email = document.getElementById('loginEmail').value;
+        const pass = document.getElementById('loginPassword').value;
+        const errBox = document.getElementById('authError');
+        errBox.style.display = 'none';
+
+        auth.signInWithEmailAndPassword(email, pass)
+            .catch((error) => {
+                errBox.innerText = "Giriş başarısız: " + error.message;
+                errBox.style.display = 'block';
+            });
+    }
+
+    window.handleLogout = function() {
+        auth.signOut().then(() => {
+            localStorage.removeItem('yks_veriler');
+        });
+    }
 
     // SEKMELER
     window.switchTab = function(evt, tabName) {
@@ -340,9 +418,12 @@
     // KAYDETME
     window.saveData = function(e) {
         e.preventDefault();
+        if (!currentUser) return;
+
         const type = document.getElementById('examType').value;
         const obj = {
             id: 'id_' + Date.now(),
+            userId: currentUser.uid, // Veriyi ekleyen kullanıcının ID'si
             type: type,
             yayin: document.getElementById('yayin').value,
             tarih: document.getElementById('tarih').value,
@@ -371,7 +452,7 @@
         }
 
         veriler.push(obj);
-        localStorage.setItem('yks_veriler', JSON.stringify(veriler));
+        localStorage.setItem('yks_veriler_' + currentUser.uid, JSON.stringify(veriler));
         renderTables();
         closeModal();
 
@@ -384,39 +465,39 @@
     window.deleteData = function(id) {
         if(confirm("Bu denemeyi silmek istediğine emin misin?")) {
             veriler = veriler.filter(v => v.id !== id);
-            localStorage.setItem('yks_veriler', JSON.stringify(veriler));
+            localStorage.setItem('yks_veriler_' + currentUser.uid, JSON.stringify(veriler));
             renderTables();
             db.collection("analizweb_veriler").doc(id).delete().catch(err => console.log(err));
         }
     }
 
-    // VERİLERİ YÜKLEME VE SENKRONİZASYON
+    // VERİLERİ YÜKLEME VE KULLANICIYA ÖZEL SENKRONİZASYON
     function initData() {
-        const localData = localStorage.getItem('yks_veriler');
+        if (!currentUser) return;
+
+        const localData = localStorage.getItem('yks_veriler_' + currentUser.uid);
         if(localData) {
             veriler = JSON.parse(localData);
             renderTables();
         }
 
-        db.collection("analizweb_veriler").onSnapshot((snapshot) => {
-            if(!snapshot.empty) {
+        // Sadece giriş yapan kullanıcının userId'sine ait verileri getir
+        unsubscribeSnapshot = db.collection("analizweb_veriler")
+            .where("userId", "==", currentUser.uid)
+            .onSnapshot((snapshot) => {
                 let cloudVeriler = [];
                 snapshot.forEach((docSnap) => {
                     cloudVeriler.push(docSnap.data());
                 });
                 veriler = cloudVeriler;
-                localStorage.setItem('yks_veriler', JSON.stringify(veriler));
+                localStorage.setItem('yks_veriler_' + currentUser.uid, JSON.stringify(veriler));
                 renderTables();
-                document.getElementById('syncStatus').innerText = "✅ Buluta Bağlı (Senkronize)";
+                document.getElementById('syncStatus').innerText = "✅ Buluta Bağlı (Güvenli)";
                 document.getElementById('syncStatus').style.color = "#10b981";
-            } else {
-                document.getElementById('syncStatus').innerText = "☁️ Bulut Aktif (Boş)";
-                document.getElementById('syncStatus').style.color = "#3b82f6";
-            }
-        }, (error) => {
-            document.getElementById('syncStatus').innerText = "⚠️ Yerel Mod (Bulut Erişilemedi)";
-            document.getElementById('syncStatus').style.color = "#f59e0b";
-        });
+            }, (error) => {
+                document.getElementById('syncStatus').innerText = "⚠️ Yerel Mod (Bulut Erişilemedi)";
+                document.getElementById('syncStatus').style.color = "#f59e0b";
+            });
     }
 
     function renderTables() {
@@ -468,7 +549,6 @@
     }
 
     toggleFields();
-    initData();
 </script>
 </body>
 </html>

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>YKS 2027 Bulut Analiz Paneli</title>
     
-    <!-- SAYFA YÜKLENİR YÜKLENMEZ TEMA KONTROLÜ (Beyaz ekran / sıfırlanma önleyici) -->
+    <!-- SAYFA YÜKLENİR YÜKLENMEZ TEMA KONTROLÜ -->
     <script>
         if (localStorage.getItem('theme') === 'dark') {
             document.documentElement.classList.add('dark-mode-preload');
@@ -13,10 +13,9 @@
     </script>
 
     <!-- Grafik kütüphanesi -->
-    <!-- Grafik kütüphanesi -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
-    <!-- Firebase SDK (Versiyon 8 CDN - Tek dosya için en kararlı yapı) -->
+    <!-- Firebase SDK (Versiyon 8 CDN) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
@@ -34,9 +33,8 @@
         }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
         body { background-color: var(--bg-color); color: var(--text-color); padding: 20px; transition: background-color 0.2s ease, color 0.2s ease; }
-        .main-container { max-width: 1200px; margin: 0 auto; display: none; } /* Giriş yapana kadar gizli */
+        .main-container { max-width: 1200px; margin: 0 auto; display: none; }
         
-        /* GİRİŞ EKRANI STİLLERİ */
         #auth-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: var(--bg-color); display: flex; justify-content: center; align-items: center; z-index: 9999;
@@ -107,7 +105,7 @@
 </head>
 <body>
 
-<!-- GİRİŞ EKRANI (AUTH OVERLAY) -->
+<!-- GİRİŞ EKRANI -->
 <div id="auth-overlay">
     <div class="auth-card">
         <h2>YKS Analiz Girişi</h2>
@@ -258,9 +256,7 @@
     </div>
 </div>
 
-<!-- Hibrit Mantık, Tema ve Auth Yönetimi Scripti -->
 <script>
-    // 1. TEMA YÖNETİMİ (Anında ve Kesin Uygulama)
     if (localStorage.getItem('theme') === 'dark') {
         document.body.classList.add('dark-mode');
     }
@@ -288,8 +284,7 @@
         }
     });
 
-    // 2. FIREBASE AYARLARI (Senin Paneline Tam Uyumlu)
-const firebaseConfig = {
+    const firebaseConfig = {
         apiKey: "AIzaSyBUAu9Q3uAwfljXldwLUmnepMpZRKGFOuU",
         authDomain: "yksanaliz2027.firebaseapp.com",
         projectId: "yksanaliz2027",
@@ -298,7 +293,9 @@ const firebaseConfig = {
         appId: "1:337676460231:web:d37f173c353c491c17dee2"
     };
 
-    firebase.initializeApp(firebaseConfig);
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+    }
     const db = firebase.firestore();
     const auth = firebase.auth();
 
@@ -309,7 +306,6 @@ const firebaseConfig = {
 
     document.getElementById('tarih').valueAsDate = new Date();
 
-    // SAYAÇ
     const targetDate = new Date("June 19, 2027 10:15:00").getTime();
     function updateTimer() {
         const now = new Date().getTime();
@@ -324,7 +320,6 @@ const firebaseConfig = {
     setInterval(updateTimer, 1000);
     updateTimer();
 
-    // AUTH (GİRİŞ / ÇIKIŞ) YÖNETİMİ
     auth.onAuthStateChanged((user) => {
         const authOverlay = document.getElementById('auth-overlay');
         const mainContainer = document.getElementById('mainContainer');
@@ -333,10 +328,10 @@ const firebaseConfig = {
             currentUser = user;
             authOverlay.style.display = 'none';
             mainContainer.style.display = 'block';
-            initData(); // Verileri sadece giriş yapan kullanıcının ID'sine göre çek
+            initData();
         } else {
             currentUser = null;
-            if (unsubscribeSnapshot) unsubscribeSnapshot(); // Önceki dinleyiciyi durdur
+            if (unsubscribeSnapshot) unsubscribeSnapshot();
             mainContainer.style.display = 'none';
             authOverlay.style.display = 'flex';
             veriler = [];
@@ -359,11 +354,10 @@ const firebaseConfig = {
 
     window.handleLogout = function() {
         auth.signOut().then(() => {
-            localStorage.removeItem('yks_veriler');
+            localStorage.clear();
         });
     }
 
-    // SEKMELER
     window.switchTab = function(evt, tabName) {
         document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -416,7 +410,6 @@ const firebaseConfig = {
         }
     }
 
-    // KAYDETME
     window.saveData = function(e) {
         e.preventDefault();
         if (!currentUser) return;
@@ -439,7 +432,6 @@ const firebaseConfig = {
             if(d + y > topSoru) { alert("Hata: Doğru ve yanlış toplamı toplam soru sayısını geçemez!"); return; }
             obj.net = Math.max(0, parseFloat((d - (y / 4)).toFixed(2)));
         } else {
-            const maxs = getMaxSorular();
             let d1 = parseInt(document.getElementById('d1').value) || 0, y1 = parseInt(document.getElementById('y1').value) || 0;
             let d2 = parseInt(document.getElementById('d2').value) || 0, y2 = parseInt(document.getElementById('y2').value) || 0;
             let d3 = parseInt(document.getElementById('d3').value) || 0, y3 = parseInt(document.getElementById('y3').value) || 0;
@@ -462,7 +454,6 @@ const firebaseConfig = {
         });
     }
 
-    // SİLME
     window.deleteData = function(id) {
         if(confirm("Bu denemeyi silmek istediğine emin misin?")) {
             veriler = veriler.filter(v => v.id !== id);
@@ -472,7 +463,6 @@ const firebaseConfig = {
         }
     }
 
-    // VERİLERİ YÜKLEME VE KULLANICIYA ÖZEL SENKRONİZASYON
     function initData() {
         if (!currentUser) return;
 

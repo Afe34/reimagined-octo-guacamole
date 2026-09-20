@@ -287,7 +287,7 @@
         }
     });
 
-    // 2. FIREBASE AYARLARI
+    // 2. FIREBASE AYARLARI (Senin Paneline Tam Uyumlu)
     const firebaseConfig = {
         apiKey: "AIzaSyBUAu9Q3uAwfljXldwLUmnepMpZRKGFOuU",
         authDomain: "yksanaliz2027.firebaseapp.com",
@@ -423,7 +423,7 @@
         const type = document.getElementById('examType').value;
         const obj = {
             id: 'id_' + Date.now(),
-            userId: currentUser.uid, // Veriyi ekleyen kullanıcının ID'si
+            userId: currentUser.uid,
             type: type,
             yayin: document.getElementById('yayin').value,
             tarih: document.getElementById('tarih').value,
@@ -481,7 +481,6 @@
             renderTables();
         }
 
-        // Sadece giriş yapan kullanıcının userId'sine ait verileri getir
         unsubscribeSnapshot = db.collection("analizweb_veriler")
             .where("userId", "==", currentUser.uid)
             .onSnapshot((snapshot) => {
